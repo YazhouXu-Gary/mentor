@@ -1,0 +1,73 @@
+mode:
+ type: Standalone
+ repository:
+  type: JDBC
+
+dataSources:
+  ds_0:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.cj.jdbc.Driver
+    jdbcUrl: jdbc:mysql://127.0.0.1:6446/db_0?useSSL=false&useServerPrepStmts=true&cachePrepStmts=true&prepStmtCacheSize=8192&prepStmtCacheSqlLimit=1024
+    username: root
+    password: 123456 #replace with your pwd
+    connectionTimeoutMilliseconds: 30000
+    idleTimeoutMilliseconds: 60000
+    maxLifetimeMilliseconds: 1800000
+    maxPoolSize: 25
+    minPoolSize: 25
+  ds_1:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.cj.jdbc.Driver
+    jdbcUrl: jdbc:mysql://127.0.0.1:3340/db_1?useSSL=false&useServerPrepStmts=true&cachePrepStmts=true&prepStmtCacheSize=8192&prepStmtCacheSqlLimit=1024
+    username: root
+    password: 123456 #replace with your pwd
+    connectionTimeoutMilliseconds: 30000
+    idleTimeoutMilliseconds: 60000
+    maxLifetimeMilliseconds: 1800000
+    maxPoolSize: 25
+    minPoolSize: 25    
+
+rules:
+  - !SHARDING
+    # set up routing strategy for databases
+    defaultDatabaseStrategy:
+      standard:
+        shardingColumn: user_id
+        shardingAlgorithmName: database_inline
+    # set up routing strategy for tables
+    tables:
+      user_request:
+        actualDataNodes: ds_$->{0..1}.user_request_$->{0..1}
+        tableStrategy:
+          standard:
+            shardingColumn: user_id
+            shardingAlgorithmName: user_request_inline
+        keyGenerateStrategy:
+          column: request_id
+          keyGeneratorName: snowflake
+
+    # Algorithms set up
+    shardingAlgorithms:
+      # Algorithms for database routing , using prefix with % result here in example.
+      database_inline:
+        type: INLINE
+        props:
+          algorithm-expression: ds_$->{Math.abs(user_id.hashCode()) % 2}     
+
+      # Algorithms for table routing, only 2 tables per database here for demo purpose
+      user_request_inline:
+        type: INLINE
+        props:
+          algorithm-expression: user_request_$->{(user_id.hashCode() ^ (user_id.hashCode()) >>> 16) & 1}
+
+    # Algorithms to generate distributed ids, simply use snowflake here.
+    keyGenerators:
+      snowflake:
+        type: SNOWFLAKE
+
+props:
+  executor-size: 50
+  sql-show: true
+  sql-simple: false
+  max-connections-size-per-query: 10
+  
